@@ -1,0 +1,66 @@
+#!/bin/bash
+
+ip_address=$(curl -s ipinfo.io/ip)
+
+function print_time() {
+  local local_time=$(date +"%Y-%m-%d %H:%M:%S %Z")
+  local utc_time=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+  echo "Local time:  $local_time"
+  echo "UTC time:    $utc_time"
+}
+
+function schedule_stop() {
+  local target_time="$1"
+  while true; do
+    current_time=$(date +%s)
+    parsed_timestamp=$(date -d "$target_time" +%s)
+
+    if [[ $parsed_timestamp -le $current_time ]]; then
+      echo "Stopping Supra docker..."
+      # Uncomment the next line to stop the docker
+       docker stop supra_${ip_address}
+      exit 0
+    else
+      minutes_left=$(( ($parsed_timestamp - $current_time) / 60 ))
+      seconds_left=$(( ($parsed_timestamp - $current_time) % 60 ))
+      echo "Time left until scheduled stop: $minutes_left minutes and $seconds_left seconds."
+      sleep 60
+    fi
+  done
+}
+
+case $1 in
+  "now")  
+    echo "Stopping Supra docker..."
+    # Uncomment the next line to stop the docker
+     # docker stop supra_${ip_address}
+    ;;   
+  [0-9]*)
+    timestamp="$1"
+
+    # Convert timestamp to seconds since epoch
+    parsed_timestamp=$(date -d "$timestamp" +%s 2>/dev/null)
+
+    if ! [[ $parsed_timestamp ]]; then
+      echo "Error: Invalid timestamp format. Please use 'YYYY-MM-DD HH:MM:SS'."
+      exit 1
+    fi
+
+    current_time=$(date +%s)
+
+    if [[ $parsed_timestamp -lt $current_time ]]; then
+      echo "Error: Timestamp cannot be in the past."
+      exit 1
+    fi
+
+    echo "Scheduled Supra stop for $timestamp"
+    schedule_stop "$timestamp"
+    ;;
+  "test")
+    print_time
+    echo "Public IP address: $ip_address"
+    ;;
+  *)
+    echo "Invalid argument. Usage: $0 (now | 'YYYY-MM-DD HH:MM:SS' | test)"
+    ;;
+esac
