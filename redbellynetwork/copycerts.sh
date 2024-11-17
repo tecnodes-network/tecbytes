@@ -7,7 +7,7 @@ SOURCE_CERT_FOLDER="/var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.
 CERT_FILE="rbn.xx.crt"
 KEY_FILE="rbn.xx.key"
 DAYS_THRESHOLD=${1:-3}  # Default to 3 days if not provided
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/969677951346028607/ce8w7lbHncjiNs3CCA3B28SG1NIzEpfdld8b45NCTCBz9pRjtwbvFaPTmXfrhN9KOb0R"
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/xxxx/xxxxx"
 
 # Function to send a Discord notification
 send_discord_notification() {
