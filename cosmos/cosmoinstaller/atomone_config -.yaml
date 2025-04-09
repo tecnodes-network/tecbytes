@@ -1,0 +1,42 @@
+node:
+  chain_id: atomone-1
+  binary_name: atomoned
+  binary_path: /usr/local/bin/atomoned
+  node_home: /home/ubuntu/.atomone
+  moniker: tecnodes-atomone
+  go_version: 1.21.13
+files:
+  genesis_url: https://tecnodes.network/chains/mainnet/atomone/genesis.json
+  addrbook_url: https://tecnodes.network/chains/mainnet/atomone/addrbook.json
+  peers: 57ddbd5da66f3edb4c1a7b713dc59a04e857e1af@peer.atomone.tecnodes.network:46656,ed0e36c57122184ab05b6c635b2f2adf592bfa0c@atomone-mainnet-peer.itrocket.net:61657,6a5b68893b69da2b0672ee0f7fec9b76663fb144@82.113.25.144:26656,acdc4b1e0aa756a70d4c1b52f094a7ffbda76186@81.17.97.74:26656,151b869eaafd0d4ec13a1706d82258cf54eedb71@121.78.241.75:16656,3e4966c80404640faa84d10970778cbf671d7032@37.27.45.178:26656,13745b16a6e037d9282c7d77980f05f20c4cbd41@152.53.18.245:12656,3bfb3f122affd7d1b03757b5ea7c44bb1775dd5c@37.27.63.150:23956,5d913650738a081aa02631a7f108dc7812330f0b@37.27.129.24:13656,00ada7229530d3dd97f0a75f9b8541b809d9dfbd@91.210.101.99:26656,ffef507ef51505d2610df24323027161fc95a472@65.108.231.54:17656,9aceed722f09a3b0de202bbdd98dc345e2b84731@65.108.109.48:26656
+  seeds: 57ddbd5da66f3edb4c1a7b713dc59a04e857e1af@peer.atomone.tecnodes.network:46656
+pruning:
+  strategy: custom
+  keep_recent: 100
+  keep_every: 10
+  interval: 10
+ports:
+  rpc: 36657
+  p2p: 36656
+  api: 1217
+  grpc: 8090
+  grpc_web: 8091
+  prometheus: 36660
+  pprof: 7060
+  proxy_app: 36658
+sync:
+  method: snapshot
+  snapshot_url: https://tecnodes.network/chains/mainnet/atomone/latest.tar.lz4
+  statesync_rpc: https://rpc.atomone.tecnodes.network:443
+  statesync_peer: 57ddbd5da66f3edb4c1a7b713dc59a04e857e1af@peer.atomone.tecnodes.network:46656
+wasm:
+  enabled: false
+  url: 
+caddy:
+  expose_rpc: true
+  expose_api: true
+  expose_grpc: true
+  domain: atomone.tecnodes.network
+  domain_pattern: '*.atomone.tecnodes.network'
+install:
+  prerequisites: true
