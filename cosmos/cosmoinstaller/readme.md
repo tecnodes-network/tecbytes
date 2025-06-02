@@ -13,7 +13,12 @@ Cosmovisor Setup: Automatic upgrades configuration
 ```
 python3 main.py --config /path/to/your/config.yaml
 ```
-
+## Tip
+```
+python3 -m zipapp cosmoinstaller -o cosmoi.pyz -m "main:main"
+echo '#!/usr/bin/env python3' | cat  - cosmoi.pyz > cosmoi
+./cosmoi --config celestia.yaml
+```
 
 ## Updates
  Fix naming conflict between sync_node() method and sync_node_config variable
