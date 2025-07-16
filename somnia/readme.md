@@ -17,6 +17,38 @@ RPC_TIMEOUT=10                                              # Timeout for RPC ca
 MIN_SUCCESSFUL_RPCS=1                                       # Minimum successful RPC responses needed
 ```
 
+### Run as Cronjob
+```
+*/5 * * * * /home/ubuntu/somnia/scripts/somnia-monitor.sh >> /home/ubuntu/somnia/scripts/somnia-monitor.log 2>&1
+```
+
+### Log Rotation (Optional)
+```
+sudo tee /etc/logrotate.d/somnia-monitor << 'EOF'
+/home/ubuntu/somnia/scripts/somnia-monitor.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 ubuntu ubuntu
+    su ubuntu ubuntu
+}
+EOF
+```
+### Example Run
+```
+[2025-07-16 18:15:01] Starting Somnia Network monitoring for Full Node (with External RPC Comparison)...
+[2025-07-16 18:15:01] External RPC comparison enabled: 1 RPC(s) configured
+[2025-07-16 18:15:01] Block lag threshold: 200 blocks
+[2025-07-16 18:15:01] RPC Success: https://api.infra.mainnet.somnia.network returned block 47509183
+[2025-07-16 18:15:01] Network comparison: Local=47509182, Network=47509183 (1 blocks behind network)
+[2025-07-16 18:15:01] Current Status: Block=47509182 (Full Node) (1 blocks behind network)
+[2025-07-16 18:15:01] Local blocks syncing normally: +9454 blocks in 950s (597.09 blocks/min)
+[2025-07-16 18:15:01] Monitoring check completed for Full Node
+```
+
 ## 🎯 Smart Monitoring Features
 
 ### **1. Multiple RPC Support**
