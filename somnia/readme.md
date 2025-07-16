@@ -106,6 +106,13 @@ EOF
 - 📋 **Status reporting**: Clear differentiation between local vs network issues
 - 🔧 **Easy maintenance**: Simple configuration file with clear documentation
 
+### **8. To-do**
+- Auto-rejoin if in_current_epoch is 0 - should take care of epoch interval
+- Low balance alert
+- Governance & voting
+- Server health metrics
+  
+
 ## 📊 Example Multi-RPC Configuration
 
 ```bash
