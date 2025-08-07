@@ -5,8 +5,8 @@
 
 # Configuration
 METRICS_URL="http://localhost:9004/metrics"
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/xxxx"
-NODE_NAME="Tecnodes Mainnet Validator"
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/xxx"
+NODE_NAME="Tecnodes Testnet Validator"
 STATE_FILE="/tmp/somnia_monitor_state"
 LOCK_FILE="/tmp/somnia_monitor.lock"
 
@@ -19,7 +19,7 @@ NODE_TYPE="validator"  # Change to "fullnode" for non-validator nodes
 # External RPC Configuration
 EXTERNAL_RPC_CHECK="yes"                                    # Enable/disable external RPC comparison (yes/no)
 EXTERNAL_RPCS="https://api.infra.mainnet.somnia.network"    # Comma-separated RPC URLs
-BLOCK_LAG_THRESHOLD=200                                     # Blocks behind before WARNING alert
+BLOCK_LAG_THRESHOLD=120                                     # Blocks behind before WARNING alert
 RPC_TIMEOUT=10                                              # Timeout for RPC calls (seconds)
 MIN_SUCCESSFUL_RPCS=1                                       # Minimum successful RPC responses needed
 
@@ -221,13 +221,24 @@ monitor_node() {
     
     # Validate metrics were fetched
     if [ -z "$current_block_height" ] || ([ "$NODE_TYPE" = "validator" ] && [ -z "$current_epoch_status" ]); then
-        log "${RED}Failed to fetch metrics from $METRICS_URL${NC}"
+        log "${RED}CRITICAL: Failed to fetch metrics from $METRICS_URL${NC}"
         ((CONSECUTIVE_FAILS++))
         
-        if [ $CONSECUTIVE_FAILS -ge 3 ]; then
-            local node_type_desc=$([ "$NODE_TYPE" = "validator" ] && echo "Validator Node" || echo "Full Node")
-            send_discord_alert "🚨 CRITICAL: Metrics Endpoint Down" \
-                "Unable to fetch metrics from $node_type_desc for $CONSECUTIVE_FAILS consecutive checks.\n\n**Node Type:** $node_type_desc\n**Metrics URL:** $METRICS_URL\n**Status:** Node may be down or metrics port unreachable" \
+        local node_type_desc=$([ "$NODE_TYPE" = "validator" ] && echo "Validator Node" || echo "Full Node")
+        
+        # Send immediate alert on first failure (critical issue)
+        if [ $CONSECUTIVE_FAILS -eq 1 ]; then
+            send_discord_alert "🚨 CRITICAL: Node Metrics Unavailable" \
+                "**URGENT: Node appears to be DOWN!**\n\nUnable to fetch metrics from $node_type_desc.\n\n**Node Type:** $node_type_desc\n**Metrics URL:** $METRICS_URL\n**Status:** Node may be completely down or metrics port unreachable\n**First Failure:** $(date '+%Y-%m-%d %H:%M:%S')\n\n**Immediate actions needed:**\n• Check if node process is running\n• Verify metrics port is accessible\n• Check system resources\n• Review node logs" \
+                16711680
+        # Follow-up alerts for persistent failures
+        elif [ $CONSECUTIVE_FAILS -eq 5 ]; then
+            send_discord_alert "🚨 CRITICAL: Node Still Down" \
+                "Node has been unresponsive for $CONSECUTIVE_FAILS consecutive checks.\n\n**Duration:** ~$((CONSECUTIVE_FAILS * 5)) minutes\n**Node Type:** $node_type_desc\n**Status:** Still unable to fetch metrics\n\n**URGENT ACTION REQUIRED**" \
+                16711680
+        elif [ $CONSECUTIVE_FAILS -eq 12 ]; then  # ~1 hour
+            send_discord_alert "🚨 CRITICAL: Node Down for 1+ Hour" \
+                "Node has been unresponsive for over 1 hour ($CONSECUTIVE_FAILS checks).\n\n**Duration:** ~$((CONSECUTIVE_FAILS * 5)) minutes\n**Node Type:** $node_type_desc\n**Status:** Extended outage detected\n\n**THIS MAY RESULT IN SLASHING PENALTIES**" \
                 16711680
         fi
         
@@ -235,7 +246,17 @@ monitor_node() {
         return 1
     fi
     
-    # Reset consecutive fails if metrics fetched successfully
+    # Reset consecutive fails and send recovery notification if needed
+    if [ $CONSECUTIVE_FAILS -gt 0 ]; then
+        local outage_duration=$((CONSECUTIVE_FAILS * 5))
+        local node_type_desc=$([ "$NODE_TYPE" = "validator" ] && echo "Validator Node" || echo "Full Node")
+        
+        send_discord_alert "✅ Node Recovered" \
+            "$node_type_desc is back online and responding.\n\n**Outage Duration:** ~${outage_duration} minutes ($CONSECUTIVE_FAILS failed checks)\n**Recovery Time:** $(date '+%Y-%m-%d %H:%M:%S')\n**Current Block:** $current_block_height" \
+            65280
+        
+        log "${GREEN}Node recovered after $CONSECUTIVE_FAILS failed attempts (${outage_duration} minutes)${NC}"
+    fi
     CONSECUTIVE_FAILS=0
     
     # External RPC comparison (if enabled)
@@ -245,7 +266,16 @@ monitor_node() {
     
     if [ "$EXTERNAL_RPC_CHECK" = "yes" ]; then
         if current_network_block=$(get_network_block_height); then
+            # Reset RPC fails and send recovery notification if needed
+            if [ $CONSECUTIVE_RPC_FAILS -gt 0 ]; then
+                send_discord_alert "✅ External RPC Endpoints Recovered" \
+                    "External RPC endpoints are responding again.\n\n**Outage Duration:** $CONSECUTIVE_RPC_FAILS failed attempts\n**Recovery Time:** $(date '+%Y-%m-%d %H:%M:%S')\n**Network Block:** $current_network_block" \
+                    65280
+                
+                log "${GREEN}External RPCs recovered after $CONSECUTIVE_RPC_FAILS failed attempts${NC}"
+            fi
             CONSECUTIVE_RPC_FAILS=0
+            
             current_block_lag=$((current_network_block - current_block_height))
             
             if [ $current_block_lag -gt 0 ]; then
@@ -282,12 +312,17 @@ monitor_node() {
             fi
         else
             ((CONSECUTIVE_RPC_FAILS++))
-            log "${YELLOW}Failed to fetch network block height from external RPCs${NC}"
+            log "${YELLOW}Failed to fetch network block height from external RPCs (attempt $CONSECUTIVE_RPC_FAILS)${NC}"
             
-            # Alert if external RPCs are consistently failing
-            if [ $CONSECUTIVE_RPC_FAILS -ge 3 ]; then
-                send_discord_alert "⚠️ WARNING: External RPC Endpoints Unavailable" \
-                    "Unable to fetch network block height for comparison.\n\n**Consecutive Failures:** $CONSECUTIVE_RPC_FAILS\n**RPC Results:**\n$LAST_RPC_RESULTS\n**Impact:** Cannot detect if node is falling behind network\n**Local monitoring continues:** Block sync monitoring still active" \
+            # Send immediate alert on first RPC failure
+            if [ $CONSECUTIVE_RPC_FAILS -eq 1 ]; then
+                send_discord_alert "⚠️ WARNING: External RPC Endpoints Unreachable" \
+                    "Cannot fetch network block height for comparison.\n\n**Impact:** Unable to detect if node is falling behind network\n**RPC Results:**\n$LAST_RPC_RESULTS\n**Local monitoring continues:** Block sync monitoring still active\n**Time:** $(date '+%Y-%m-%d %H:%M:%S')" \
+                    16776960
+            # Alert for persistent RPC failures
+            elif [ $CONSECUTIVE_RPC_FAILS -eq 6 ]; then  # ~30 minutes
+                send_discord_alert "⚠️ WARNING: External RPCs Down for 30+ Minutes" \
+                    "External RPC endpoints have been unavailable for $CONSECUTIVE_RPC_FAILS consecutive checks.\n\n**Duration:** ~$((CONSECUTIVE_RPC_FAILS * 5)) minutes\n**Impact:** Cannot compare with network state\n**Status:** Local monitoring continues\n\n**Consider checking:**\n• Network connectivity\n• RPC endpoint status\n• Firewall/proxy settings" \
                     16776960
             fi
             
@@ -309,12 +344,12 @@ monitor_node() {
         # Check if validator is out of active set (CRITICAL)
         if [ "$current_epoch_status" = "0" ] && [ "$PREV_EPOCH_STATUS" = "1" ]; then
             send_discord_alert "🚨 CRITICAL: Validator Removed from Active Set" \
-                "**URGENT ACTION REQUIRED**\n\nValidator has been removed from the active validator set!\n\n**Current Status:** Out of active set (0)\n**Previous Status:** In active set (1)\n**Block Height:** $current_block_height\n**Network Block:** $current_network_block\n\n**Immediate actions needed:**\n• Check validator logs\n• Verify staking requirements\n• Check slashing conditions\n• Review uptime metrics" \
+                "**URGENT ACTION REQUIRED**\n\nValidator has been removed from the active validator set!\n\n**Current Status:** Out of active set (0)\n**Previous Status:** In active set (1)\n**Block Height:** $current_block_height\n**Network Block:** $current_network_block\n**Time:** $(date '+%Y-%m-%d %H:%M:%S')\n\n**Immediate actions needed:**\n• Check validator logs\n• Verify staking requirements\n• Check slashing conditions\n• Review uptime metrics" \
                 16711680
                 
         elif [ "$current_epoch_status" = "1" ] && [ "$PREV_EPOCH_STATUS" = "0" ]; then
             send_discord_alert "✅ Validator Restored to Active Set" \
-                "Validator has been restored to the active validator set.\n\n**Current Status:** In active set (1)\n**Block Height:** $current_block_height\n**Network Block:** $current_network_block" \
+                "Validator has been restored to the active validator set.\n\n**Current Status:** In active set (1)\n**Block Height:** $current_block_height\n**Network Block:** $current_network_block\n**Recovery Time:** $(date '+%Y-%m-%d %H:%M:%S')" \
                 65280
         fi
     fi
@@ -336,7 +371,7 @@ monitor_node() {
             fi
             
             send_discord_alert "⚠️ WARNING: Local Block Sync Stalled" \
-                "Local node has stopped producing/syncing new blocks.\n\n**Node Type:** $node_type_desc\n**Current Block:** $current_block_height\n**Previous Block:** $PREV_BLOCK_HEIGHT\n**Time Since Last Check:** ${time_diff}s\n$network_info$status_info\n**Possible causes:**\n• Node synchronization problems\n• Consensus issues\n• Local node malfunction" \
+                "Local node has stopped producing/syncing new blocks.\n\n**Node Type:** $node_type_desc\n**Current Block:** $current_block_height\n**Previous Block:** $PREV_BLOCK_HEIGHT\n**Time Since Last Check:** ${time_diff}s\n**Detection Time:** $(date '+%Y-%m-%d %H:%M:%S')\n$network_info$status_info\n**Possible causes:**\n• Node synchronization problems\n• Consensus issues\n• Local node malfunction" \
                 16776960
         else
             local blocks_synced=$((current_block_height - PREV_BLOCK_HEIGHT))
