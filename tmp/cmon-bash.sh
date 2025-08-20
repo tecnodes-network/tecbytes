@@ -161,7 +161,6 @@ EOF
         log "$chain" "${RED}Failed to send Discord notification${NC}"
     fi
 }
-}
 
 # Function to send heartbeat
 send_heartbeat() {
