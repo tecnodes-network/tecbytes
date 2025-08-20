@@ -264,7 +264,6 @@ detect_cosmos_chain_params() {
         fi
     fi
 }
-}
 
 # Function to get effective Cosmos chain parameters (detected or configured)
 get_cosmos_chain_params() {
@@ -313,7 +312,6 @@ get_cosmos_chain_params() {
     esac
     
     log "$COSMOS_CHAIN_NAME" "${GREEN}Effective params: denom=$effective_denom, symbol=$EFFECTIVE_COSMOS_TOKEN_SYMBOL, exponent=$effective_exponent, max_validators=$effective_max_validators${NC}"
-}
 }
 
 # Function to auto-detect Substrate chain parameters
