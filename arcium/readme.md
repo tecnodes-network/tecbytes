@@ -39,8 +39,8 @@ curl https://ipecho.net/plain ; echo
 ```
 
 > **Example outputs:**
-> - IPv6: `2a01:4f8:2191:2f5d::2`
-> - IPv4: `116.202.212.179`
+> - IPv6: `2a01:xxx:2191:xxx::2`
+> - IPv4: `110.200.202.21`
 
 📝 **Note:** Save the IP address displayed - you'll need it multiple times
 
