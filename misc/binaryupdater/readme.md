@@ -120,6 +120,11 @@ build_binary_path: build/gaiad                      # path to built binary relat
 ./upgrade.sh --config cosmos.conf --version v17.0.0 --proposal-id 17 --dry-run
 ./upgrade.sh --config cosmos.conf --version v17.0.0 --cosmovisor-upgrade-name v17         # for manual plan name
 ./upgrade.sh --config cosmos.conf --version v16.1.1 --cosmovisor-upgrade-name v16 --reuse-existing-upgrade
+
+> cosmovisor updated:
+    ./upgrade.sh --config jackal.conf --proposal-id 24                    # Auto-detect version
+    ./upgrade.sh --config jackal.conf --version v5.0.0 --proposal-id 24   # Explicit version
+    ./upgrade.sh --config sui.conf --version v1.58.3
 ```
 
 ---
